@@ -2,6 +2,7 @@ import {Platform} from 'react-native';
 import {createAppContainer, createMaterialTopTabNavigator } from 'react-navigation';
 import Balance from './src/screens/Balance';
 import Trades from './src/screens/Trades';
+import CreateOrder from './src/screens/CreateOrder';
 
 const instructions = Platform.select({
   ios: 'Press Cmd+R to reload,\n' + 'Cmd+D or shake for dev menu',
@@ -16,6 +17,9 @@ const NavStack = createMaterialTopTabNavigator({
   },
   Trades: { 
     screen: Trades,
+  },
+  CreateOrder: { 
+    screen: CreateOrder,
   }
 });
 

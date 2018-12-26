@@ -1,10 +1,12 @@
 
 // const WebSocket = require('ws');
 const axios = require('axios');
-// const ethereumjs = require('ethereumjs-util');
-// const ethereumunits = require('ethereumjs-units');
-// const web3 = require('web3-utils');
-// const { mapValues } = require('lodash');
+//const ethereumjs = require('ethereumjs-util');
+const web3 = require('web3-utils');
+const { mapValues } = require('lodash');
+var BigNumber = require('bignumber.js');
+BigNumber.config({ EXPONENTIAL_AT : 1e+9 })
+
 const backend = {
     api: async function (action, json = {}) {
         const API_URL = 'https://api.idex.market/';
@@ -12,7 +14,8 @@ const backend = {
             const contentType = 'application/json';
             let headers = {
                  'User-Agent': userAgent,
-                'Content-type': contentType
+                'Content-type': contentType,
+                'Accept': contentType
             };
     
             try {
@@ -21,21 +24,157 @@ const backend = {
                     headers: headers,
                     method: 'POST',
                     baseURL: API_URL,
+                    response: 'json',
                     data: json
                 });
-                console.log(JSON.stringify(response.data));
 
                 if ( response && response.status !== 200 ) return new Error(JSON.stringify(response.data));
-                return response.data;
+                return JSON.stringify(response.data)
             } catch (error) {
                 console.log(error.response.data)
                 return new Error(JSON.stringify(error.response));
             }
-      },
-      returnTicker: async function (ticker = "ETH_HOT") {
+    },
+    toWei:  function toWei(eth, decimals) { return new  BigNumber(String(eth)).times(new BigNumber(10 ** decimals)).floor().toString()},
+    toEth:  function toEth(wei, decimals) { return new BigNumber(String(wei)).div(new BigNumber(10 ** decimals))},
+    returnCurrency: async function returnCurrency(currency){
+        let currencies = await this.api(`returnCurrencies`)
+        let res =  currencies[currency];
+        return res;
+    },
+    returnSignature: async function returnSignature(msgToSignIn,privateKeyIn){
+        const privateKey = privateKeyIn.substring(0, 2) === '0x' ?
+        privateKeyIn.substring(2, privateKeyIn.length) : privateKeyIn;
+        const salted = ethereumjs.hashPersonalMessage(ethereumjs.toBuffer(msgToSignIn))
+        const sig = mapValues(ethereumjs.ecsign(salted, new Buffer(privateKey, 'hex')), (value, key) => key === 'v' ? value : ethereumjs.bufferToHex(value));
+        return sig;
+    },
+    returnTicker: async function (ticker = "ETH_HOT") {
         const json = { market: `${ticker}` }
         return await this.api(`returnTicker`, json)
-    }
+    },
+    returnBalances: async function returnBalances(address) {
+        return await this.api(`returnBalances`, { address } )
+    },
+    /**
+     * order
+     * @param {action} num1 The first number to add.
+     * @param {price} num2 The second number to add.
+     * @return {quantity} The result of adding num1 and num2.
+     * @return {token} The result of adding num1 and num2.
+     */
+    order: async function order(action, price, quantity,token, privateKey) {
+        console.log("price => ",price, '\n')
+        console.log("quantity => ",quantity, '\n')
+        console.log("price * quantity => ",price * quantity, '\n')
+        console.log("token => ",token, '\n')
+
+        let res = await this.returnNextNonce(_wallet_address);
+    
+        let contractAddress = await this.returnContractAddress(_wallet_address);
+
+        const amountBigNum = new BigNumber(String(quantity));
+
+        const amountBaseBigNum = new BigNumber(String(quantity * price));
+
+        const tokenBuy = action === 'buy' ? token.address : _eth_token
+        const tokenSell = action === 'sell' ? token.address : _eth_token
+        const amountBuy = action === 'buy' ?
+        this.toWei(amountBigNum, token.decimals) :
+        this.toWei(amountBaseBigNum, 18);
+        const amountSell = action === 'sell' ?
+        this.toWei(amountBigNum, token.decimals) :
+        this.toWei(amountBaseBigNum, 18);
+
+        //"amountBuy": "",//"156481944430762460",
+        // "amountSell": "",//"20511560000000000000000",
+        // price 0.00000762
+        // quantity 20511.56
+        // total 0.15648194
+
+        const args = {
+            "contractAddress": contractAddress,
+            "tokenBuy": tokenBuy,
+            "amountBuy": amountBuy,
+            "tokenSell": tokenSell,
+            "amountSell": amountSell,
+            "expires": 100000,
+            "nonce": res.nonce,
+            "address": _wallet_address
+            }
+
+            const raw = web3.soliditySha3({
+            t: 'address',
+            v: args.contractAddress
+            }, {
+            t: 'address',
+            v: args.tokenBuy
+            }, {
+            t: 'uint256',
+            v: args.amountBuy
+            }, {
+            t: 'address',
+            v: args.tokenSell
+            }, {
+            t: 'uint256',
+            v: args.amountSell
+            }, {
+            t: 'uint256',
+            v: args.expires
+            }, {
+            t: 'uint256',
+            v: args.nonce
+            }, {
+            t: 'address',
+            v: args.address
+            });
+
+        var sig = await this.returnSignature(raw, privateKey);
+
+        const obj = {
+            tokenBuy: args.tokenBuy,
+            amountBuy: args.amountBuy,
+            tokenSell: args.tokenSell,
+            amountSell: args.amountSell,
+            address: _wallet_address,
+            nonce: res.nonce,
+            expires: args.expires,
+            v: sig.v,
+            r: sig.r,
+            s: sig.s
+            };
+
+        console.log("order => ", obj, '\n');
+        return await this.api(`order`,obj)
+    },
+        /**
+     * Adds two numbers.
+     * @param {orderHash} orderHash The first number to add.
+     * @param {nonce} nonce The second number to add.
+     */
+    cancel: async function cancel(orderHash, nonce, privateKey) {
+
+        let raw = web3.soliditySha3({
+            t: 'uint256',
+            v: orderHash
+            }, {
+            t: 'uint256',
+            v: nonce
+            });
+
+        var sig = await this.returnSignature(raw, privateKey);
+
+        const obj = {
+            orderHash: orderHash,
+            nonce: nonce,
+            address: _wallet_address,
+            v: sig.v,
+            r: sig.r,
+            s: sig.s,
+            };
+
+        return await this.api(`cancel`, obj)
+    },
 
 }
   
