@@ -31,10 +31,11 @@ const backend = {
         const contentType = 'application/json';
 
             let headers = {
+                'Content-type' : contentType,
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
                 'User-Agent': userAgent
             };
-            
+
             try {
                 const response = await axios.request({
                     url: action,
@@ -55,7 +56,7 @@ const backend = {
                 return new Error(JSON.stringify(error.response));
             }
     },
-            /**
+    /**
      * Adds two numbers.
      * @param {orderHash} orderHash The first number to add.
      * @param {nonce} nonce The second number to add.
@@ -67,6 +68,26 @@ const backend = {
             };
 
         return await this.localAPI(`cancel`, obj)
+    },
+        /**
+     * Adds two numbers.
+     * @param {orderHash} orderHash The first number to add.
+     * @param {nonce} nonce The second number to add.
+     */
+    orderAPI: async function cancelAPI(action = "sell", token, price, quantity) {
+        console.log("action => ", action)
+        console.log("token => ", token)
+        console.log("price => ", price)
+        console.log("quantity => ", quantity)
+
+        const obj = {
+            action: action,
+            token: token,
+            price: price,
+            quantity: quantity,
+            };
+
+        return await this.localAPI(`order`, obj)
     },
     api: async function (action, json = {}) {
         const API_URL = 'https://api.idex.market/';

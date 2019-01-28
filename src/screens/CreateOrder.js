@@ -1,5 +1,18 @@
 import React, { Component } from "react";
-import { StyleSheet, Text, View, Button,Alert } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  CheckBox,
+  Select,
+  View,
+  Button,
+  Alert,
+  Input
+  
+} from "react-native";
+
+import TextInput from 'react-native-material-textinput'
+
 import {
   FormLabel,
   FormInput,
@@ -9,107 +22,112 @@ import backend from "../server";
 import keys from "../server/config";
 
 class CreateOrder extends Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-          text: '',
-          price: 0,
-          token: ''
-        };
-    }
+  constructor(props) {
+    super(props);
+    this.state = {
+      quantity: "",
+      price: '0',
+      token: ""
+    };
+  }
   static navigationOptions = {
     title: "CreateOrder"
   };
 
   componentDidMount() {
-     // this._returnCurrency();
-    }
-
-  _returnCurrency(){
-    backend.returnCurrency(key)
-    .then(response => {
-      this.setState({
-        token: [response.address]
-      });
-    })
-    .catch(error => {
-      Alert.alert("Error", error)
-    });
+    // this._returnCurrency();
   }
 
-  _createOrder(){
-    const wall = keys.WALLET_ADDRESS;
-
-
-    backend.order("buy", this.state.price, this.state.text, this.state.token, "")
+  _returnCurrency() {
+    backend
+      .returnCurrency(key)
       .then(response => {
-        var obj = JSON.parse(response);
-        Object.keys(obj).map(k => {
-          if(Number(obj[k]) < 0.01) return
-          this.setState({
-            balances: [...this.state.balances, {key: k, value: Number(obj[k]).toFixed(2)}]
-          });
+        this.setState({
+          token: [response.address]
         });
+      })
+      .catch(error => {
+        Alert.alert("Error", error);
+      });
+  }
+
+  onCreateOrder(action, token, price, quantity){
+
+    console.log("action => ", action)
+    console.log("token => ", token)
+    console.log("price => ", price)
+    console.log("quantity => ", quantity)
+    backend
+      .orderAPI(action, token, price, quantity)
+      .then(response => {
+        //this.props.navigation.navigate('OpenOrders');
       })
       .catch(error => {
         this.setState({ error, loading: false });
       });
+
   }
 
   handleSubmit = () => {
     const value = this._form.getValue();
-    console.log('value: ', value);
-  }
+    console.log("value: ", value);
+  };
 
   render() {
     /* 2. Get the param, provide a fallback value if not available */
     const { navigation } = this.props;
-    const key = navigation.getParam('key', 'NO-ID');
-    const value = navigation.getParam('value', 'some default value');
+    this.state.token = navigation.getParam("key", "NO-ID");
+    let value = navigation.getParam("value", "some default value");
 
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-       
-      {/* <FormLabel><Text style={styles.welcome}>{key}</Text></FormLabel>
-      <FormInput 
-          style={{height: 40, borderColor: 'gray', borderWidth: 1}}
-          onChangeText={(text) => this.setState({text})} 
-          value={value}
-          editable={true}
-        /> */}
+      <View style={{flex: 1,flexDirection: 'column',justifyContent: 'center',alignItems: 'stretch'}}>
 
-        {/* <Button
+<Text style={styles.welcome}>{this.state.quantity}</Text>
+
+    <TextInput
+        label={this.state.token}
+        value= {this.state.quantity}
+        keyboardType="decimal-pad"
+
+        onChangeText={quantity => this.setState({ quantity })}
+      />
+
+    <TextInput
+        label="Price"
+        style={styles.textInput}
+        keyboardType="decimal-pad"
+        value={this.state.price}
+        maxLength={10} 
+        inlineImageLeft='search_icon'
+        onChangeText={price => this.setState({ price })}
+      />
+
+    <Button
         title="Submit"
-        onPress={() => this._createOrder()}
-        /> */}
-        <Button
-          title="Go back"
-          onPress={() => this.props.navigation.goBack()}
-        />
+        onPress={() => this.onCreateOrder("sell", this.state.token, this.state.price, this.state.quantity)}
+    />
       </View>
     );
+  }
 }
-
-}
-
 
 const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      justifyContent: 'flex-start',
-      alignItems: 'flex-start',
-      backgroundColor: '#F5FCFF',
-    },
-    welcome: {
-      fontSize: 20,
-      textAlign: 'center',
-      margin: 10,
-    },
-    instructions: {
-      textAlign: 'center',
-      color: '#333333',
-      marginBottom: 5,
-    },
-  });
+  container: {
+    flex: 1,
+    justifyContent: "flex-start",
+    alignItems: "flex-start",
+    backgroundColor: "#F5FCFF"
+  },
+  welcome: {
+    fontSize: 20,
+    textAlign: "center",
+    margin: 10
+  },
+  instructions: {
+    textAlign: "center",
+    color: "#333333",
+    marginBottom: 5
+  }
+});
 
 export default CreateOrder;

@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { SafeAreaView, FlatList, StyleSheet, Alert } from "react-native";
+import { SafeAreaView, FlatList, StyleSheet, Alert, ScrollView, RefreshControl } from "react-native";
 import { List, ListItem } from "react-native-elements";
 
 import backend from "../server";
@@ -20,20 +20,40 @@ class OpenOrders extends Component {
   }
 
   onGetCompleteBalances() {
+    this.setState({ refreshing: true });
+    this.setState({
+      completeBalances: []
+    });
     const wall = keys.WALLET_ADDRESS;
     backend
       .returnCompleteBalances(wall)
       .then(response => {
         var obj = JSON.parse(response);
+        console.table(obj)
         Object.keys(obj).map(k => {
           if (Number(obj[k]["onOrders"]) == 0) return;
-          this.setState({
-            completeBalances: [
-              ...this.state.completeBalances,
-              { key: k, value: Number(obj[k]["onOrders"]).toFixed(2) }
-            ]
-          });
+          backend.returnOpenOrders("ETH_" + k ,wall)
+          .then(response => {
+            var obj = JSON.parse(response);
+            console.table(obj)
+            Object.keys(obj).map(order => {
+            this.setState({
+              completeBalances: [
+                ...this.state.completeBalances,
+                { 
+                  key: obj[order]["orderHash"], 
+                  value:obj[order]["amount"],
+                  title: obj[order]["market"], 
+                  subtitle: "Amount: " + obj[order]["amount"] + " Price: " + obj[order]["price"]}// Number(response["amount"]).toFixed(2), price: response["price"].toFixed(2) }
+              ]
+            });
+            })
+
+            
+          });         
         });
+        this.setState({ refreshing: false });
+
       })
       .catch(error => {
         this.setState({ error, loading: false });
@@ -59,7 +79,16 @@ class OpenOrders extends Component {
     const { navigate } = this.props.navigation;
 
     return (
+      <ScrollView
+      refreshControl={
+        <RefreshControl
+          refreshing={this.state.refreshing}
+          onRefresh={() => this.onGetCompleteBalances()}
+          />
+      }>
+      
       <SafeAreaView>
+       
         <List containerStyle={{ borderTopWidth: 0, borderBottomWidth: 0 }}>
           <FlatList
             data={this.state.completeBalances}
@@ -75,20 +104,23 @@ class OpenOrders extends Component {
                         onPress: () => console.log("Cancel Pressed"),
                         style: "cancel"
                       },
-                      { text: "OK", onPress: () => this.onCancelOrder(item.key) }
+                      { text: "OK", onPress: () => this.onCancelOrder(item.title) }
                     ],
                     { cancelable: false }
                   )
                 }
-                title={item.key}
-                subtitle={item.value}
+                title={item.title}
+                subtitle={item.subtitle}
                 containerStyle={{ borderBottomWidth: 0 }}
               />
             )}
             keyExtractor={item => item.key}
+            onRefresh={() => this.onGetCompleteBalances()}
+            refreshing={this.state.refreshing}
           />
         </List>
       </SafeAreaView>
+      </ScrollView>
     );
   }
 }

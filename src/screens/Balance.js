@@ -1,9 +1,8 @@
 import React, { Component } from "react";
 import {
-  Text,
-  View,
   SafeAreaView,
-  FlatList
+  FlatList,
+  ScrollView, RefreshControl
 } from "react-native";
 import { List, ListItem } from "react-native-elements";
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -51,32 +50,17 @@ class Balance extends Component {
     
     }
 
-  onGetTicker() {
-    backend.returnTicker("ETH_HOT").then(response => {
-      var obj = JSON.parse(response);
-      obj["ticker"] = "ETH_HOT";
-      obj["avatar"] = "https://pbs.twimg.com/profile_images/937033951201366016/V_sr4wTk_400x400.jpg";
-
-      this.setState({
-        arr: [...this.state.arr, obj]
-      });
-    });
-
-    backend.returnTicker("ETH_TRAC").then(response => {
-      var obj = JSON.parse(response);
-      obj["ticker"] = "ETH_TRAC";
-      obj["avatar"] = "https://pbs.twimg.com/profile_images/910900381370208256/O0DkEy27_400x400.jpg";
-
-      this.setState({
-        arr: [...this.state.arr, obj]
-      });
-    });
-  }
-
   render() {
     const {navigate} = this.props.navigation;
 
     return (
+      <ScrollView
+      refreshControl={
+        <RefreshControl
+          refreshing={this.state.refreshing}
+          onRefresh={() => this.onGetBalances()}
+          />
+      }>
       <SafeAreaView>
         <List containerStyle={{ borderTopWidth: 0, borderBottomWidth: 0 }}>
         <FlatList
@@ -94,14 +78,10 @@ class Balance extends Component {
             />
           )}  
           keyExtractor={item => item.key}
-          onRefresh={() => this.onGetBalances()}
-          refreshing={this.state.refreshing}
         />
       </List>
       </SafeAreaView>
-
-
-      
+      </ScrollView>
     );
   }
 }
