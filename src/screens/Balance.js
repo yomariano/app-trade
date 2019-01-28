@@ -27,9 +27,14 @@ class Balance extends Component {
   }
 
   onGetBalances() {
-const wall = keys.WALLET_ADDRESS;
+    this.setState({ refreshing: true });
+    this.setState({
+      balances: []
+    });
+  const wall = keys.WALLET_ADDRESS;
     backend.returnBalances(wall)
       .then(response => {
+        
         var obj = JSON.parse(response);
         Object.keys(obj).map(k => {
           if(Number(obj[k]) < 0.01) return
@@ -37,6 +42,8 @@ const wall = keys.WALLET_ADDRESS;
             balances: [...this.state.balances, {key: k, value: Number(obj[k]).toFixed(2)}]
           });
         });
+
+        this.setState({ refreshing: false })
       })
       .catch(error => {
         this.setState({ error, loading: false });
@@ -87,6 +94,8 @@ const wall = keys.WALLET_ADDRESS;
             />
           )}  
           keyExtractor={item => item.key}
+          onRefresh={() => this.onGetBalances()}
+          refreshing={this.state.refreshing}
         />
       </List>
       </SafeAreaView>

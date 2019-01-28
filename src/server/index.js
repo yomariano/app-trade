@@ -6,8 +6,68 @@ const web3 = require('web3-utils');
 const { mapValues } = require('lodash');
 var BigNumber = require('bignumber.js');
 BigNumber.config({ EXPONENTIAL_AT : 1e+9 })
+var axiosdebug = require('axios-debug-log')({
+    request: function (debug, config) {
+        console.log('Request with ' + JSON.stringify(config))
+    },
+    response: function (debug, response) {
+        console.log(
+        'Response with ' + JSON.stringify(response),
+        'from ' + response.config.url
+      )
+    },
+    error: function (debug, error) {
+      // Read https://www.npmjs.com/package/axios#handling-errors for more info
+      console.log('Boom', JSON.stringify(error))
+    }
+  })
+
+
 
 const backend = {
+    localAPI: async function (action, json = {}) {
+        const API_URL = 'http://localhost:5000';
+         const userAgent = 'Mozilla/4.0 (compatible; Node IDEX API)';
+        const contentType = 'application/json';
+
+            let headers = {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                'User-Agent': userAgent
+            };
+            
+            try {
+                const response = await axios.request({
+                    url: action,
+                    headers: headers,
+                    method: 'POST',
+                    baseURL: API_URL,
+                    response: 'json',
+                    data: json
+                });
+
+            
+                console.log("response: ",  response);
+
+                if ( response && response.status !== 200 ) return new Error(JSON.stringify(response.data));
+                return JSON.stringify(response.data)
+            } catch (error) {
+                console.log(error.response.data)
+                return new Error(JSON.stringify(error.response));
+            }
+    },
+            /**
+     * Adds two numbers.
+     * @param {orderHash} orderHash The first number to add.
+     * @param {nonce} nonce The second number to add.
+     */
+    cancelAPI: async function cancelAPI(token) {
+
+        const obj = {
+            token: token,
+            };
+
+        return await this.localAPI(`cancel`, obj)
+    },
     api: async function (action, json = {}) {
         const API_URL = 'https://api.idex.market/';
         const userAgent = 'Mozilla/4.0 (compatible; Node IDEX API)';
@@ -27,7 +87,7 @@ const backend = {
                     response: 'json',
                     data: json
                 });
-
+                
                 if ( response && response.status !== 200 ) return new Error(JSON.stringify(response.data));
                 return JSON.stringify(response.data)
             } catch (error) {
@@ -55,6 +115,15 @@ const backend = {
     },
     returnBalances: async function returnBalances(address) {
         return await this.api(`returnBalances`, { address } )
+    },
+    returnOpenOrders: async function returnOpenOrders(market, address = null) {
+        console.log({ market, address })
+        return await this.api(`returnOpenOrders`, { market, address })
+    },
+    returnCompleteBalances: async function returnCompleteBalances(address) {
+        console.log({ address })
+
+        return await this.api(`returnCompleteBalances`, { address })
     },
     /**
      * order

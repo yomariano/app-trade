@@ -8,17 +8,6 @@ import {
 import backend from "../server";
 import keys from "../server/config";
 
-import t from 'tcomb-form-native';
-
-const Form = t.form.Form;
-
-const User = t.struct({
-  email: t.String,
-  username: t.maybe(t.String),
-  password: t.String,
-  terms: t.Boolean
-});
-
 class CreateOrder extends Component {
     constructor(props) {
         super(props);
@@ -80,15 +69,7 @@ class CreateOrder extends Component {
 
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-       <Form 
-          ref={c => this._form = c}
-          type={User} 
-          options={options}
-        />
-        <Button
-          title="Sign Up!"
-          onPress={this.handleSubmit}
-        />
+       
       {/* <FormLabel><Text style={styles.welcome}>{key}</Text></FormLabel>
       <FormInput 
           style={{height: 40, borderColor: 'gray', borderWidth: 1}}
@@ -110,29 +91,7 @@ class CreateOrder extends Component {
 }
 
 }
-const formStyles = {
-  ...Form.stylesheet,
-  formGroup: {
-    normal: {
-      marginBottom: 10
-    },
-  },
-  controlLabel: {
-    normal: {
-      color: 'blue',
-      fontSize: 18,
-      marginBottom: 7,
-      fontWeight: '600'
-    },
-    // the style applied when a validation error occours
-    error: {
-      color: 'red',
-      fontSize: 18,
-      marginBottom: 7,
-      fontWeight: '600'
-    }
-  }
-}
+
 
 const styles = StyleSheet.create({
     container: {

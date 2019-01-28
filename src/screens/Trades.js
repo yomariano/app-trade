@@ -9,7 +9,7 @@ class Trades extends Component {
       //const {navigate} = this.props.navigation;
       return (
         <View>
-         <Text style={styles.welcome}>Trades</Text>
+         <Text style={styles.welcome}></Text>
         </View>
       );
     }
