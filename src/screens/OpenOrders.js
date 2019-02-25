@@ -1,5 +1,12 @@
 import React, { Component } from "react";
-import { SafeAreaView, FlatList, StyleSheet, Alert, ScrollView, RefreshControl } from "react-native";
+import {
+  SafeAreaView,
+  FlatList,
+  StyleSheet,
+  Alert,
+  ScrollView,
+  RefreshControl
+} from "react-native";
 import { List, ListItem } from "react-native-elements";
 
 import backend from "../server";
@@ -19,48 +26,71 @@ class OpenOrders extends Component {
     this.onGetCompleteBalances();
   }
 
-  onGetCompleteBalances() {
+  onGetCompleteBalances = async () => {
     this.setState({ refreshing: true });
     this.setState({
       completeBalances: []
     });
-    const wall = keys.WALLET_ADDRESS;
-    backend
-      .returnCompleteBalances(wall)
-      .then(response => {
-        var obj = JSON.parse(response);
-        console.table(obj)
-        Object.keys(obj).map(k => {
-          if (Number(obj[k]["onOrders"]) == 0) return;
-          backend.returnOpenOrders("ETH_" + k ,wall)
-          .then(response => {
-            var obj = JSON.parse(response);
-            console.table(obj)
-            Object.keys(obj).map(order => {
-            this.setState({
-              completeBalances: [
-                ...this.state.completeBalances,
-                { 
-                  key: obj[order]["orderHash"], 
-                  value:obj[order]["amount"],
-                  title: obj[order]["market"], 
-                  subtitle: "Amount: " + obj[order]["amount"] + " Price: " + obj[order]["price"]}// Number(response["amount"]).toFixed(2), price: response["price"].toFixed(2) }
-              ]
-            });
-            })
+    let arr = [];
 
-            
-          });         
+    try {
+      let orders = await backend.returnOrderBookForUser(
+        "0x6912cCC1E60d282607cb88D55E9bf20c2e06a13c"
+      );
+      let ticker = await backend.returnCurrencies();
+      let objOrders = JSON.parse(orders);
+
+      Object.keys(objOrders).map(async o => {
+        let objTickers = JSON.parse(ticker);
+        Object.keys(objTickers).map(async e => {
+          if (
+            objTickers[e]["address"] == objOrders[o].tokenSell &&
+            e !== "ETH"
+          ) {
+            arr.push("ETH_" + e);
+          }
+          if (
+            objTickers[e]["address"] == objOrders[o].tokenBuy &&
+            e !== "ETH"
+          ) {
+            arr.push("ETH_" + e);
+          }
         });
-        this.setState({ refreshing: false });
-
-      })
-      .catch(error => {
-        this.setState({ error, loading: false });
       });
-  }
+    } catch (e) {
+      console.error("err => ", e);
+    }
 
-  onCancelOrder(token){
+    Object.keys(arr).map(async e => {
+      let openOrders = await backend.returnOpenOrders(
+        arr[e],
+        keys.WALLET_ADDRESS
+      );
+      let objOpenOrders = JSON.parse(openOrders);
+
+      Object.keys(objOpenOrders).map(order => {
+        this.setState({
+          completeBalances: [
+            ...this.state.completeBalances,
+            {
+              key: objOpenOrders[order]["orderHash"],
+              value: Number(objOpenOrders[order]["amount"]).toFixed(2),
+              title: objOpenOrders[order]["market"],
+              subtitle:
+                "Amount: " +
+                Number(objOpenOrders[order]["amount"]).toFixed(2) +
+                " Price: " +
+                objOpenOrders[order]["price"]
+            }
+          ]
+        });
+      });
+    });
+
+    this.setState({ refreshing: false });
+  };
+
+  onCancelOrder(token) {
     backend
       .cancelAPI(token)
       .then(response => {
@@ -72,7 +102,6 @@ class OpenOrders extends Component {
       .catch(error => {
         this.setState({ error, loading: false });
       });
-
   }
 
   render() {
@@ -80,46 +109,48 @@ class OpenOrders extends Component {
 
     return (
       <ScrollView
-      refreshControl={
-        <RefreshControl
-          refreshing={this.state.refreshing}
-          onRefresh={() => this.onGetCompleteBalances()}
-          />
-      }>
-      
-      <SafeAreaView>
-       
-        <List containerStyle={{ borderTopWidth: 0, borderBottomWidth: 0 }}>
-          <FlatList
-            data={this.state.completeBalances}
-            renderItem={({ item }) => (
-              <ListItem
-                onPress={() =>
-                  Alert.alert(
-                    "Cancel",
-                    "Are you sure want to cancel?",
-                    [
-                      {
-                        text: "Cancel",
-                        onPress: () => console.log("Cancel Pressed"),
-                        style: "cancel"
-                      },
-                      { text: "OK", onPress: () => this.onCancelOrder(item.title) }
-                    ],
-                    { cancelable: false }
-                  )
-                }
-                title={item.title}
-                subtitle={item.subtitle}
-                containerStyle={{ borderBottomWidth: 0 }}
-              />
-            )}
-            keyExtractor={item => item.key}
-            onRefresh={() => this.onGetCompleteBalances()}
+        refreshControl={
+          <RefreshControl
             refreshing={this.state.refreshing}
+            onRefresh={() => this.onGetCompleteBalances()}
           />
-        </List>
-      </SafeAreaView>
+        }
+      >
+        <SafeAreaView>
+          <List containerStyle={{ borderTopWidth: 0, borderBottomWidth: 0 }}>
+            <FlatList
+              data={this.state.completeBalances}
+              renderItem={({ item }) => (
+                <ListItem
+                  onPress={() =>
+                    Alert.alert(
+                      "Cancel",
+                      "Are you sure want to cancel?",
+                      [
+                        {
+                          text: "Cancel",
+                          onPress: () => console.log("Cancel Pressed"),
+                          style: "cancel"
+                        },
+                        {
+                          text: "OK",
+                          onPress: () => this.onCancelOrder(item.title)
+                        }
+                      ],
+                      { cancelable: false }
+                    )
+                  }
+                  title={item.title}
+                  subtitle={item.subtitle}
+                  containerStyle={{ borderBottomWidth: 0 }}
+                />
+              )}
+              keyExtractor={item => item.key}
+              onRefresh={() => this.onGetCompleteBalances()}
+              refreshing={this.state.refreshing}
+            />
+          </List>
+        </SafeAreaView>
       </ScrollView>
     );
   }
